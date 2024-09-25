@@ -8,6 +8,13 @@ import (
 	"strconv"
 )
 
+// Pratt Parsing stuff
+type (
+	prefixParseFn func() ast.Expression
+	// this takes in the expression on the left side as argument
+	infixParseFn func(ast.Expression) ast.Expression
+)
+
 // Precedences
 const (
 	_ int = iota
@@ -84,7 +91,36 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.INT, p.parseIntegerLiteral)
 	p.registerPrefix(token.BANG, p.parsePrefixExpression)
 	p.registerPrefix(token.MINUS, p.parsePrefixExpression)
+	p.registerPrefix(token.TRUE, p.parseBoolean)
+	p.registerPrefix(token.FALSE, p.parseBoolean)
+	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
+
+	p.infixParseFns = make(map[token.TokenType]infixParseFn)
+	p.registerInfix(token.PLUS, p.parseInfixExpression)
+	p.registerInfix(token.MINUS, p.parseInfixExpression)
+	p.registerInfix(token.SLASH, p.parseInfixExpression)
+	p.registerInfix(token.ASTERISK, p.parseInfixExpression)
+	p.registerInfix(token.EQ, p.parseInfixExpression)
+	p.registerInfix(token.NOT_EQ, p.parseInfixExpression)
+	p.registerInfix(token.LT, p.parseInfixExpression)
+	p.registerInfix(token.GT, p.parseInfixExpression)
 	return p
+}
+
+func (p *Parser) parseBoolean() ast.Expression {
+	return &ast.Boolean{Token: p.curToken, Value: p.curTokenIs(token.TRUE)}
+}
+
+func (p *Parser) parseGroupedExpression() ast.Expression {
+	p.nextToken()
+
+	exp := p.parseExpression(LOWEST)
+
+	if !p.expectPeek(token.RPAREN) {
+		return nil
+	}
+
+	return exp
 }
 
 func (p *Parser) parsePrefixExpression() ast.Expression {
@@ -94,7 +130,7 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 	return expression
 }
 
-func (p *Parser) parseInfixExpession(left ast.Expression) ast.Expression {
+func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
 	expression := &ast.InfixExpression{
 		Token:    p.curToken,
 		Operator: p.curToken.Literal,
@@ -255,10 +291,3 @@ func (p *Parser) expectPeek(t token.TokenType) bool {
 	p.peekError(t)
 	return false
 }
-
-// Pratt Parsing stuff
-type (
-	prefixParseFn func() ast.Expression
-	// this takes in the expression on the left side as argument
-	infixParseFn func(ast.Expression) ast.Expression
-)
