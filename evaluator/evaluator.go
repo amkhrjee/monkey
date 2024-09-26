@@ -135,18 +135,6 @@ func evalIntegerInfixExpression(op string, left, right object.Object) object.Obj
 	}
 }
 
-func evalStatements(stmts []ast.Statement) object.Object {
-	var result object.Object
-	for _, statement := range stmts {
-		result = Eval(statement)
-
-		if returnValue, ok := result.(*object.ReturnValue); ok {
-			return returnValue.Value
-		}
-	}
-	return result
-}
-
 func nativeBoolToBooleanObject(input bool) *object.Boolean {
 	if input {
 		return TRUE
